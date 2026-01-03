@@ -1,100 +1,190 @@
-## Prerequisites
-- An AWS account with necessary permissions.
+🚀 3-Tier Application Deployment on AWS EKS using GitLab CI/CD
+📌 Overview
 
-## Application Code
-The `Application-Code` directory contains the source code for the Three-Tier Web Application. Dive into this directory to explore the frontend and backend implementations.
+This project demonstrates the end-to-end deployment of a 3-tier web application using Docker, GitLab CI/CD, AWS EKS, and AWS ECR.
 
-## Kubernetes Manifests Files
-The `k8s-manifests` directory holds Kubernetes manifests for deploying the application on AWS EKS.
+The goal of this project is to simulate a real-world CI/CD workflow by automating:
 
-## Project Details
-🛠️ **Tools Explored:**
-- Terraform & AWS CLI for AWS infrastructure
-- GitLab CI/CD
-- Docker
-- AWS ECR
-- AWS EKS
+Application build
 
-### Step 1: IAM Configuration
-- Create a user `USERNAME` with `AdministratorAccess`.
-- Generate Security Credentials: Access Key and Secret Access Key.
+Testing
 
-### Step 2: EC2 Setup
-- Launch an Ubuntu instance in your favourite region (eg. region `ap-south-1`).
-- SSH into the instance from your local machine.
+Container image publishing
 
-### Step 3: Install AWS CLI v2
-``` shell
-curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-sudo apt install unzip
-unzip awscliv2.zip
-sudo ./aws/install -i /usr/local/aws-cli -b /usr/local/bin --update
-aws configure
-```
+Kubernetes deployment
 
-### Step 4: Install Docker
-``` shell
-sudo apt-get update
-sudo apt install docker.io
-docker ps
-sudo chown $USER /var/run/docker.sock
-```
+🏗 Architecture
 
-### Step 5: Install kubectl
-``` shell
-curl -o kubectl https://amazon-eks.s3.us-west-2.amazonaws.com/1.19.6/2021-01-05/bin/linux/amd64/kubectl
-chmod +x ./kubectl
-sudo mv ./kubectl /usr/local/bin
-kubectl version --short --client
-```
+The application follows a 3-tier architecture:
 
-### Step 6: Install eksctl
-``` shell
-curl --silent --location "https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_$(uname -s)_amd64.tar.gz" | tar xz -C /tmp
-sudo mv /tmp/eksctl /usr/local/bin
-eksctl version
-```
+Frontend (Presentation Layer)
 
-### Step 7: Setup EKS Cluster
-``` shell
-eksctl create cluster --name three-tier-cluster --region us-west-2 --node-type t2.medium --nodes-min 2 --nodes-max 2
-aws eks update-kubeconfig --region us-west-2 --name three-tier-cluster
-kubectl get nodes
-```
+React.js
 
-### Step 8: Run Manifests
-``` shell
-kubectl create namespace workshop
-kubectl apply -f .
-kubectl delete -f .
-```
+Served as a Docker container
 
-### Step 9: Install AWS Load Balancer
-``` shell
-curl -O https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/v2.5.4/docs/install/iam_policy.json
-aws iam create-policy --policy-name AWSLoadBalancerControllerIAMPolicy --policy-document file://iam_policy.json
-eksctl utils associate-iam-oidc-provider --region=us-west-2 --cluster=three-tier-cluster --approve
-eksctl create iamserviceaccount --cluster=three-tier-cluster --namespace=kube-system --name=aws-load-balancer-controller --role-name AmazonEKSLoadBalancerControllerRole --attach-policy-arn=arn:aws:iam::626072240565:policy/AWSLoadBalancerControllerIAMPolicy --approve --region=us-west-2
-```
+Backend (Application Layer)
 
-### Step 10: Deploy AWS Load Balancer Controller
-``` shell
-sudo snap install helm --classic
-helm repo add eks https://aws.github.io/eks-charts
-helm repo update eks
-helm install aws-load-balancer-controller eks/aws-load-balancer-controller -n kube-system --set clusterName=my-cluster --set serviceAccount.create=false --set serviceAccount.name=aws-load-balancer-controller
-kubectl get deployment -n kube-system aws-load-balancer-controller
-kubectl apply -f full_stack_lb.yaml
-```
+Node.js (REST API)
 
-### Cleanup
-- To delete the EKS cluster:
-``` shell
-eksctl delete cluster --name three-tier-cluster --region ap-south-1
-```
-- To clean up rest of the stuff and not incure any cost
-```
-Stop or Terminate the EC2 instance created in step 2.
-Delete the Load Balancer created in step 9 and 10.
-Go to EC2 console, access security group section and delete security groups created in previous steps
-```
+Dockerized service
+
+Database (Data Layer)
+
+MongoDB
+
+Deployed as a Kubernetes workload
+
+All components run on AWS EKS (Kubernetes).
+
+🛠 Tech Stack
+Application
+
+React.js
+
+Node.js
+
+MongoDB
+
+DevOps / Cloud
+
+Docker
+
+GitLab CI/CD
+
+AWS EKS
+
+AWS ECR
+
+AWS IAM
+
+Kubernetes (kubectl)
+
+📂 Repository Structure
+.
+├── Application-Code/
+│   ├── frontend/
+│   │   └── Dockerfile
+│   ├── backend/
+│   │   └── Dockerfile
+│
+├── k8s-manifests/
+│   ├── frontend/
+│   │   └── deployment.yml
+│   ├── backend/
+│   │   └── deployment.yml
+│   └── mongo/
+│       └── deployment.yml
+│
+├── .gitlab-ci.yml
+└── README.md
+
+🔄 CI/CD Pipeline Flow
+
+The pipeline is triggered on pushes to the main branch.
+
+Pipeline Stages
+
+Test
+
+Runs unit tests for frontend and backend
+
+Ensures code quality before deployment
+
+Build & Push
+
+Builds Docker images for frontend and backend
+
+Tags images using Git commit SHA
+
+Pushes images to AWS ECR
+
+Deploy
+
+Updates Kubernetes manifests with new image tags
+
+Deploys application to AWS EKS using kubectl
+
+🧪 CI/CD Pipeline Diagram
+Code Push (main)
+      ↓
+Run Tests
+      ↓
+Build Docker Images
+      ↓
+Push Images to AWS ECR
+      ↓
+Deploy to AWS EKS
+
+🔐 Authentication & Security
+
+AWS credentials are stored securely using GitLab CI/CD variables
+
+No secrets are hardcoded in the repository
+
+AWS CLI uses environment variables for authentication
+
+EKS access is handled via IAM-based authentication
+
+📦 Docker Image Strategy
+
+Images are tagged using commit SHA
+
+Ensures immutable and traceable deployments
+
+Avoids use of the latest tag
+
+Example:
+
+frontend-app:37084c75
+backend-app:37084c75
+
+☸ Kubernetes Deployment
+
+Kubernetes manifests are used for deployment
+
+Image tags are dynamically injected during CI/CD
+
+Deployments are applied recursively across service directories
+
+kubectl apply -R -f k8s-manifests/
+
+🚀 How to Deploy (CI/CD)
+
+Push code to the main branch
+
+GitLab CI/CD automatically:
+
+Runs tests
+
+Builds & pushes images to ECR
+
+Deploys the application to EKS
+
+No manual intervention required.
+
+🧠 Key Learnings from This Project
+
+Designing CI/CD pipelines using GitLab
+
+Containerizing full-stack applications
+
+Handling Docker-in-Docker in CI
+
+Managing AWS authentication in pipelines
+
+Deploying applications to Kubernetes (EKS)
+
+Debugging real-world CI/CD and Kubernetes issues
+
+🔮 Future Improvements
+
+Add Helm charts for Kubernetes deployments
+
+Implement image vulnerability scanning
+
+Add staging and production environments
+
+Introduce rollback and health-check automation
+
+Add monitoring with Prometheus and Grafana
