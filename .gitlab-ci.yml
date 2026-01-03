@@ -1,0 +1,76 @@
+workflow:
+  rules:
+    - if: $CI_COMMIT_BRANCH == 'main'
+
+stages:
+    - build
+    - test
+    - push
+    - deploy
+
+variables:
+  IMAGE_TAG: $CI_COMMIT_SHORT_SHA
+  DOCKER_TLS_CERTDIR: ""
+  AWS_DEFAULT_REGION: ap-south-1
+
+image: docker:24.0.7
+
+services:
+  - docker:24.0.7-dind
+
+build:
+    stage: build
+    before_script:
+        - apk add --no-cache aws-cli
+    script:
+        - docker build -t frontend-app:$IMAGE_TAG ./Application-Code/frontend
+        - docker build -t backend-app:$IMAGE_TAG ./Application-Code/backend
+        - mkdir images/
+        - docker save -o images/frontend-app.tar frontend-app:$IMAGE_TAG
+        - docker save -o images/backend-app.tar backend-app:$IMAGE_TAG
+    artifacts:
+        paths:
+            - images/
+        untracked: false
+        when: on_success
+        access: all
+        expire_in: 3 days
+test:
+    stage: test
+    image: node:20
+    script:
+        - cd ./Application-Code/backend
+        - npm ci
+        - npm test
+        - cd ../frontend
+        - npm ci
+        - npm test
+push:
+    stage: push
+    before_script:
+        - apk add --no-cache aws-cli
+    needs:
+        - build
+    script:
+        - docker load -i images/backend-app.tar
+        - docker load -i images/frontend-app.tar
+        - aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin $ECR_REGISTRY
+        - docker tag frontend-app:$IMAGE_TAG $ECR_REGISTRY/frontend-app:$IMAGE_TAG
+        - docker tag backend-app:$IMAGE_TAG $ECR_REGISTRY/backend-app:$IMAGE_TAG
+        - docker push $ECR_REGISTRY/frontend-app:$IMAGE_TAG
+        - docker push $ECR_REGISTRY/backend-app:$IMAGE_TAG
+
+deploy:
+    stage: deploy
+    image: 
+        name: amazon/aws-cli:latest
+        entrypoint: [""]
+
+    script:
+        - curl -LO https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl
+        - chmod +x kubectl
+        - mv kubectl /usr/local/bin/
+        - aws eks update-kubeconfig --region $AWS_DEFAULT_REGION --name $EKS_CLUSTER_NAME
+        - sed -i "s|{{IMAGE_TAG}}|$IMAGE_TAG|g" ./k8s-manifests/backend/deployment.yml
+        - sed -i "s|{{IMAGE_TAG}}|$IMAGE_TAG|g" ./k8s-manifests/frontend/deployment.yml
+        - kubectl apply -f ./k8s-manifests/ --recursive
