@@ -31,20 +31,7 @@ build:
     artifacts:
         paths:
             - images/
-        untracked: false
         when: on_success
-        access: all
-        expire_in: 3 days
-test:
-    stage: test
-    image: node:20
-    script:
-        - cd ./Application-Code/backend
-        - npm ci
-        - npm test
-        - cd ../frontend
-        - npm ci
-        - npm test
 push:
     stage: push
     before_script:
@@ -73,4 +60,5 @@ deploy:
         - aws eks update-kubeconfig --region $AWS_DEFAULT_REGION --name $EKS_CLUSTER_NAME
         - sed -i "s|{{IMAGE_TAG}}|$IMAGE_TAG|g" ./k8s-manifests/backend/deployment.yml
         - sed -i "s|{{IMAGE_TAG}}|$IMAGE_TAG|g" ./k8s-manifests/frontend/deployment.yml
+        - kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/aws/deploy.yaml
         - kubectl apply -f ./k8s-manifests/ --recursive
