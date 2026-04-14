@@ -20,12 +20,19 @@ spec:
       containers:
         - name: backend-container
           image: niveditsoni/backend-app:v1
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 3500
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
           env:
             - name: MONGO_CONN_STR
-              value: mongodb://mongodb-svc:27017/todo?directConnection=true
+              value: mongodb://mongodb-0.mongodb-svc:27017/todo
             - name: MONGO_USERNAME
               valueFrom:
                 secretKeyRef:
