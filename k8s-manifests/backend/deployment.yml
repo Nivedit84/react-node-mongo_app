@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
         - name: backend-container
-          image: niveditsoni84//backend-app:latest
+          image: niveditsoni//backend-app:v1
           imagePullPolicy: Always
           ports:
             - containerPort: 3500
